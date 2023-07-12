@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Multilayer Perceptron</title>
+</head>
+<body>
+  <script src="lib/d3.js"></script>
+  <script src="lib/graphviz.umd.js" type="javascript/worker"></script>
+  <script src="lib/d3-graphviz.js"></script>
+  <script src="micrograd.js"></script>
+  <button id="step">Step</button>
+  <select id="size">
+    <option>0.2</option>
+    <option>0.1</option>
+    <option>0.05</option>
+    <option>0.02</option>
+    <option>0.01</option>
+  </select>
+  <table style="margin: 40px 0px; font-family: monospace; border-spacing: 30px 0px;">
+    <tr><td>Inputs</td><td>Desired Outputs</td><td>Actual Outputs</td></tr>
+    <tr><td><span contenteditable="true">2.0</span> <span contenteditable="true">3.0</span> <span contenteditable="true">-1.0</span></td><td><span contenteditable="true">1.0</span></td><td id="ypred0"></td></tr>
+    <tr><td><span contenteditable="true">3.0</span> <span contenteditable="true">-1.0</span> <span contenteditable="true">0.5</span></td><td><span contenteditable="true">-1.0</span></td><td id="ypred1"></td></tr>
+    <tr><td><span contenteditable="true">0.5</span> <span contenteditable="true">1.0</span> <span contenteditable="true">1.0</span></td><td><span contenteditable="true">-1.0</span></td><td id="ypred2"></td></tr>
+    <tr><td><span contenteditable="true">1.0</span> <span contenteditable="true">1.0</span> <span contenteditable="true">-1.0</span></td><td><span contenteditable="true">1.0</span></td><td id="ypred3"></td></tr>
+    <tr><td>&nbsp;</td></tr>
+    <tr><td></td><td></td><td id="loss">Loss: </td></tr>
+  </table>
+  <div id="graph"></div>
+  <script>
+    let n = new MLP(3, [4, 4, 1]);
+
+    let xs = [  // inputs
+      [2.0, 3.0, -1.0],
+      [3.0, -1.0, 0.5],
+      [0.5, 1.0, 1.0],
+      [1.0, 1.0, -1.0],
+    ];
+    let ys = [  // expected targets
+      1.0,
+      -1.0,
+      -1.0,
+      1.0,
+    ];
+    ypred = [];  // predicted targets
+
+    function gradient_descent(step = 0.1) {
+      // forward pass
+      for (let i in xs) {
+        ypred[i] = n.forward(xs[i]);
+      }
+      console.log('ypred', ypred[0].data, ypred[1].data, ypred[2].data, ypred[3].data);
+
+      // calculate loss
+      let loss = mean_squared_error(ys, ypred);
+
+      // zero out the gradients
+      for (let p of n.parameters()) {
+        p.grad = 0.0;
+      }
+
+      // backward pass
+      loss.backward();
+
+      //dot = draw_dot(loss);
+      //console.log(dot);
+      //d3.select("#graph").graphviz().renderDot(dot);
+
+      // update
+      for (let p of n.parameters()) {
+        p.data += (-1 * step) * p.grad;
+      }
+
+      console.log('loss', loss.data);
+      return loss;
+    }
+
+    function draw_network(n) {
+      let dot = 'strict digraph { rankdir="LR"; ';
+
+      let label_w = (layer, neuron, weight) => {
+        let label = ' [fontsize=9; label="' + n.layers[layer].neurons[neuron].w[weight].data.toFixed(2);
+        if (n.layers[layer].neurons[neuron].w[weight].grad > 0) {
+          label += '⬆';
+        } else if (n.layers[layer].neurons[neuron].w[weight].grad < 0) {
+          label += '⬇';
+        }
+        label += '"]';
+        return label;
+      };
+      let label_b = (layer, neuron) => {
+        return String.fromCharCode(97+layer) + (neuron+1) + ' [fontsize=9; label="' + String.fromCharCode(97+layer) + (neuron+1) + '\n' + n.layers[layer].neurons[neuron].b.data.toFixed(2) + '"] ';
+      };
+
+      let nin = n.layers[0].neurons[0].w.length;
+      for (let i=0; i < nin; i++) {
+        dot += 'x' + (i+1) + ' [fontsize=9]; ';
+      }
+
+      for (let i=0; i < n.layers.length; i++) {
+        for (let j=0; j < n.layers[i].neurons.length; j++) {
+          dot += label_b(i, j);
+        }
+      }
+
+      for (let i=0; i < nin; i++) {
+        for (let j=0; j < n.layers[0].neurons.length; j++) {
+          dot += 'x' + (i+1) + ' -> a' + (j+1) + label_w(0, j, i) + '; ';
+        }
+      }
+
+      for (let i=0; i < n.layers.length-1; i++) {
+        for (let j=0; j < n.layers[i].neurons.length; j++) {
+          for (let k=0; k < n.layers[i+1].neurons.length; k++) {
+            dot += String.fromCharCode(97+i) + (j+1) + ' -> ' + String.fromCharCode(97+i+1) + (k+1) + label_w(i+1, k, j) + '; ';
+          }
+        }
+      }
+
+      dot += '};'
+
+      d3.select("#graph").graphviz().renderDot(dot);
+    }
+
+    document.getElementById('step').addEventListener('click', () => {
+      let size = parseFloat(document.getElementById('size').value);
+      let loss = gradient_descent(size);
+      document.getElementById('ypred0').innerHTML = ypred[0].data.toFixed(3);
+      document.getElementById('ypred1').innerHTML = ypred[1].data.toFixed(3);
+      document.getElementById('ypred2').innerHTML = ypred[2].data.toFixed(3);
+      document.getElementById('ypred3').innerHTML = ypred[3].data.toFixed(3);
+      document.getElementById('loss').innerHTML = 'Loss: ' + loss.data.toFixed(3);
+      draw_network(n);
+    });
+
+  </script>
+</body>
+</html>

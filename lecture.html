@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Multilayer Perceptron</title>
+</head>
+<body>
+  <script src="lib/d3.js"></script>
+  <script src="lib/graphviz.umd.js" type="javascript/worker"></script>
+  <script src="lib/d3-graphviz.js"></script>
+  <script src="micrograd.js"></script>
+  <p>Loading... (currently largely in console & source code).</p>
+  <div id="graph"></div>
+  <script>
+    /*
+    let a = new Value(2.0, { label: 'a' });
+    let b = new Value(-3.0, { label: 'b' });
+    let c = new Value(10.0, { label: 'c' });
+    let e = a.mul(b); e.label = 'e';
+    let d = e.add(c); d.label = 'd';
+    let f = new Value(-2.0, { label : 'f' });
+    let L = d.mul(f); L.label = 'L';
+    let dot = draw_dot(L);
+    */
+
+
+    /*
+    // inputs
+    let x1 = new Value(2.0, { label: 'x1' });
+    let x2 = new Value(0.0, { label: 'x2' });
+    // weights
+    let w1 = new Value(-3.0, { label: 'w1' });
+    let w2 = new Value(1.0, { label: 'w2' });
+    // bias of the neuron
+    let b = new Value(6.8813735870195432, { label: 'b' });
+    // x1*w1 + x2*w2 + b
+    let x1w1 = x1.mul(w1); x1w1.label = 'x1*w1';
+    let x2w2 = x2.mul(w2); x2w2.label = 'x2*w2';
+    let x1w1x2w2 = x1w1.add(x2w2); x1w1x2w2.label = 'x1*w1 + x2*w2';
+    let n = x1w1x2w2.add(b); n.label = 'n';
+    let o = n.tanh(); o.label = 'o';
+    // manual backpropagation
+    //o.grad = 1.0;
+    //o._backward();
+    //n._backward();
+    //b._backward();
+    //x1w1x2w2._backward();
+    //x2w2._backward();
+    //x1w1._backward();
+    // automatic backpropagation
+    o.backward();
+    let dot = draw_dot(o);
+    */
+
+
+    /*
+    let a = new Value(-2.0, { label: 'a' });
+    let b = new Value(3.0, { label: 'b' });
+    let d = a.mul(b); d.label = 'd';
+    let e = a.add(b); e.label = 'e';
+    let f = d.mul(e); f.label = 'f';
+    f.backward();
+    let dot = draw_dot(f);
+    */
+
+
+    /*
+    let a = new Value(2.0);
+    let b = new Value(4.0);
+    let c = a.div(b);
+    let dot = draw_dot(c);
+    */
+
+
+    /*
+    let x = [2.0, 3.0];
+    let n = new Neuron(2);
+    let L = n.forward(x);
+    console.log(L);
+    let dot = draw_dot(L);
+    */
+
+
+    /*
+    let x = [2.0, 3.0, -1.0];
+    let n = new MLP(3, [4, 4, 1]);
+    let L = n.forward(x);
+    let dot = draw_dot(L);
+    */
+
+
+    let n = new MLP(3, [4, 4, 1]);
+
+    let xs = [  // inputs
+      [2.0, 3.0, -1.0],
+      [3.0, -1.0, 0.5],
+      [0.5, 1.0, 1.0],
+      [1.0, 1.0, -1.0],
+    ];
+    let ys = [  // expected targets
+      1.0,
+      -1.0,
+      -1.0,
+      1.0,
+    ];
+    ypred = [];  // predicted targets
+
+    function gradient_descent(step = 0.1) {
+      // forward pass
+      for (let i in xs) {
+        ypred[i] = n.forward(xs[i]);
+      }
+      console.log('ypred', ypred[0].data, ypred[1].data, ypred[2].data, ypred[3].data);
+
+      // calculate loss
+      let loss = mean_squared_error(ys, ypred);
+
+      // zero out the gradients
+      for (let p of n.parameters()) {
+        p.grad = 0.0;
+      }
+
+      // backward pass
+      loss.backward();
+
+      dot = draw_dot(loss);
+      //console.log(dot);
+      d3.select("#graph").graphviz().renderDot(dot);
+
+      // update
+      for (let p of n.parameters()) {
+        p.data += (-1 * step) * p.grad;
+      }
+
+      console.log('loss', loss.data);
+    }
+
+    gradient_descent();
+
+  </script>
+</body>
+</html>
