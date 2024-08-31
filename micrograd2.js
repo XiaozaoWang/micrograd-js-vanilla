@@ -174,12 +174,15 @@ function draw_dot(root) {
 
 class Neuron {
   // nin .. number of inputs
-  constructor(nin) {
+  constructor(nin, layerIndex, neuronIndex) {
+    this.layerIndex = layerIndex;
+    this.neuronIndex = neuronIndex;
     this.w = []; // array of weights for each input
     for (let i = 0; i < nin; i++) {
       this.w[i] = new Value(Math.random() * 2 - 1, { label: "w" + i });
     }
     this.b = new Value(Math.random() * 2 - 1, { label: "b" }); // bias
+    this.out = new Value(0.0); // output of the neuron
   }
 
   forward(x) {
@@ -194,23 +197,52 @@ class Neuron {
     }
     act = act.add(this.b);
     let out = act.tanh();
+    this.out = out;
     return out;
   }
 
   parameters() {
     return [...this.w, this.b];
   }
+
+  printParams() {
+    // console.log(
+    //   "w: ",
+    //   this.w.map((w) => w.data.toFixed(2)),
+    //   "b: ",
+    //   this.b.data
+    // );
+    // print a string representation of the neuron
+    let w = this.w.map((w) => w.data.toFixed(2));
+    let b = this.b.data.toFixed(2);
+    let result = `l${this.layerIndex}n${this.neuronIndex}: `;
+    for (let i in w) {
+      result += w[i];
+      result += " ";
+    }
+    result += `${b}\nGrad: `;
+    // print gradients of weights and bias
+    for (let i in this.w) {
+      result += `${this.w[i].grad.toFixed(2)} `;
+    }
+    result += `${this.b.grad.toFixed(2)}`;
+    console.log(result);
+  }
+
+  printId() {
+    console.log(`l${this.layerIndex}n${this.neuronIndex}`);
+  }
 }
 
 class Layer {
   // nin .. number of inputs
   // nout .. number of neurons (outputs of the layer)
-  constructor(nin, nout) {
+  constructor(nin, nout, layerIndex) {
     this.nin = nin;
     this.nout = nout;
     this.neurons = []; // array of neurons
     for (let i = 0; i < nout; i++) {
-      this.neurons[i] = new Neuron(nin);
+      this.neurons[i] = new Neuron(nin, layerIndex, i);
     }
   }
 
@@ -229,6 +261,12 @@ class Layer {
     }
     return params;
   }
+
+  printParams() {
+    for (let neuron of this.neurons) {
+      neuron.printParams();
+    }
+  }
 }
 
 class MLP {
@@ -238,7 +276,7 @@ class MLP {
     this.sz = [nin, ...nouts]; // add inputs as the first layer
     this.layers = []; // not including the input layer
     for (let i = 0; i < nouts.length; i++) {
-      this.layers[i] = new Layer(this.sz[i], this.sz[i + 1]);
+      this.layers[i] = new Layer(this.sz[i], this.sz[i + 1], i);
     }
   }
 
@@ -284,10 +322,18 @@ class MLP {
     return params;
   }
 
+  printParams() {
+    for (let layer of this.layers) {
+      layer.printParams();
+    }
+  }
+
   printSize() {
     console.log(
-      "netsize: ",
+      "netsize: \n",
+      "this.layers: ",
       this.layers.map((layer) => layer.neurons.length),
+      "\nthis.size",
       this.sz
     );
   }
@@ -304,5 +350,8 @@ function mean_squared_error(ygt, yout) {
   for (let i = 1; i < yout.length; i++) {
     loss = loss.add(yout[i].sub(ygt[i]).pow(2));
   }
+  console.log("loss: ", loss);
   return loss;
 }
+
+// export { Value, Neuron, Layer, MLP, mean_squared_error, draw_dot };
